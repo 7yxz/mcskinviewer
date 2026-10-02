@@ -1,163 +1,101 @@
-const canvas = document.getElementById("skin_container");
-const nametagWrapper = document.getElementById("nametag-wrapper");
-const nametagPlate = document.getElementById("nametag-plate");
-const nametagInput = document.getElementById("nametag-input");
-const nametagSizer = document.getElementById("nametag-sizer");
-
-const skinViewer = new skinview3d.SkinViewer({
-  canvas: canvas,
-  width: window.innerWidth,
-  height: window.innerHeight
-});
-
-skinViewer.camera.position.set(0, 2, 54);
-skinViewer.zoom = 0.9;
-skinViewer.autoRotate = false;
-
-const walkingAnimation = new skinview3d.WalkingAnimation();
-walkingAnimation.speed = 0.8;
-skinViewer.animation = walkingAnimation;
-
-function syncNametagSize() {
-  const val = nametagInput.value || " ";
-  nametagSizer.textContent = val;
-  nametagInput.style.width = `${nametagSizer.offsetWidth + 6}px`;
-}
-syncNametagSize();
-
-async function loadPlayer(username) {
-  if (!username) return;
-
-  nametagInput.classList.remove("error");
-  nametagInput.style.opacity = "0.6";
-
-  let skinUrl = null;
-  let capeUrl = null;
-  let isSlim = false;
-  let success = false;
-
-  try {
-    const res = await fetch(`https://playerdb.co/api/player/minecraft/${encodeURIComponent(username)}`);
-    const json = await res.json();
-
-    if (json.success && json.data.player) {
-      const props = json.data.player.properties;
-      const texProp = props ? props.find(p => p.name === "textures") : null;
-
-      if (texProp && texProp.value) {
-        const decoded = JSON.parse(atob(texProp.value));
-        skinUrl = decoded.textures?.SKIN?.url || null;
-        isSlim = decoded.textures?.SKIN?.metadata?.model === "slim";
-        capeUrl = decoded.textures?.CAPE?.url || null;
-        success = true;
-      }
-    }
-  } catch (e) {}
-
-  if (!skinUrl) {
-    try {
-      const res = await fetch(`https://api.ashcon.app/mojang/v2/user/${encodeURIComponent(username)}`);
-      if (res.ok) {
-        const data = await res.json();
-        skinUrl = data.textures?.skin?.url || null;
-        isSlim = data.textures?.skin?.slim || false;
-        capeUrl = data.textures?.cape?.url || null;
-        success = true;
-      }
-    } catch (e) {}
-  }
-
-  if (success && skinUrl) {
-    await skinViewer.loadSkin(skinUrl, isSlim ? "slim" : "default");
-
-    if (capeUrl) {
-      await skinViewer.loadCape(capeUrl);
-      skinViewer.playerObject.backEquipment = "cape";
-    } else {
-      const ofCape = `https://optifine.net/capes/${encodeURIComponent(username)}.png`;
-      const testImg = new Image();
-      testImg.crossOrigin = "anonymous";
-      testImg.src = ofCape;
-
-      testImg.onload = async () => {
-        await skinViewer.loadCape(ofCape);
-        skinViewer.playerObject.backEquipment = "cape";
-      };
-
-      testImg.onerror = () => {
-        skinViewer.loadCape(null);
-      };
-    }
-    nametagInput.style.opacity = "1";
-  } else {
-    nametagInput.classList.add("error");
-    nametagInput.style.opacity = "1";
-    setTimeout(() => nametagInput.classList.remove("error"), 1500);
-  }
+@font-face {
+  font-family: 'Minecraft';
+  src: url('https://cdn.jsdelivr.net/gh/South-Paw/typeface-minecraft@master/files/minecraft.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/gh/South-Paw/typeface-minecraft@master/files/minecraft.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
 }
 
-loadPlayer(nametagInput.value.trim());
-
-nametagInput.addEventListener("input", syncNametagSize);
-
-nametagInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    nametagInput.blur();
-    loadPlayer(nametagInput.value.trim());
-  }
-});
-
-nametagInput.addEventListener("blur", () => {
-  loadPlayer(nametagInput.value.trim());
-});
-
-function updateNametag() {
-  requestAnimationFrame(updateNametag);
-
-  try {
-    if (!skinViewer.playerObject || !skinViewer.playerObject.skin) return;
-
-    skinViewer.playerObject.updateMatrixWorld(true);
-
-    const head = skinViewer.playerObject.skin.head;
-    const headPos = new THREE.Vector3();
-    head.getWorldPosition(headPos);
-
-    headPos.y += 9.0;
-
-    const proj = headPos.clone().project(skinViewer.camera);
-    const rect = canvas.getBoundingClientRect();
-    const screenX = rect.left + ((proj.x + 1) / 2) * rect.width;
-    const screenY = rect.top + ((-proj.y + 1) / 2) * rect.height;
-
-    nametagWrapper.style.left = `${screenX}px`;
-    nametagWrapper.style.top = `${screenY}px`;
-
-    const cam = skinViewer.camera.position;
-    const camAngle = Math.atan2(cam.x, cam.z);
-    const playerAngle = skinViewer.playerObject.rotation.y;
-    let diff = camAngle - playerAngle;
-
-    let rotY = -(diff * (180 / Math.PI));
-    rotY = ((rotY + 180) % 360);
-    if (rotY < 0) rotY += 360;
-    rotY -= 180;
-
-    let displayRotY = rotY;
-    if (displayRotY > 90) displayRotY -= 180;
-    else if (displayRotY < -90) displayRotY += 180;
-
-    const distXZ = Math.sqrt(cam.x * cam.x + cam.z * cam.z);
-    const pitch = Math.atan2(cam.y - headPos.y, distXZ);
-    const rotX = pitch * (180 / Math.PI);
-
-    nametagPlate.style.transform = `perspective(500px) rotateX(${rotX * 0.5}deg) rotateY(${displayRotY.toFixed(1)}deg)`;
-  } catch (err) {}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-requestAnimationFrame(updateNametag);
+body {
+  background: radial-gradient(circle at center, #1e2638 0%, #090c12 100%);
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: 'Minecraft', monospace;
+  user-select: none;
+}
 
-window.addEventListener("resize", () => {
-  skinViewer.width = window.innerWidth;
-  skinViewer.height = window.innerHeight;
-});
+#skin_container {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+  cursor: grab;
+  image-rendering: pixelated;
+}
+
+#skin_container:active {
+  cursor: grabbing;
+}
+
+.nametag-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -100%);
+  pointer-events: auto;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: left, top;
+}
+
+.nametag-plate {
+  position: relative;
+  background-color: rgba(0, 0, 0, 0.35);
+  padding: 4px 10px 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  border: none;
+  outline: none;
+  transform-origin: center bottom;
+  transform-style: preserve-3d;
+  backface-visibility: visible;
+}
+
+.nametag-sizer {
+  font-family: 'Minecraft', monospace;
+  font-size: 28px;
+  line-height: 1;
+  visibility: hidden;
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: pre;
+  pointer-events: none;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: none;
+}
+
+.nametag-input {
+  font-family: 'Minecraft', monospace;
+  font-size: 28px;
+  line-height: 1;
+  color: #ffffff;
+  text-shadow: 3px 3px 0px #3f3f3f;
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: center;
+  padding: 0;
+  margin: 0;
+  caret-color: #ffffff;
+  white-space: pre;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: none;
+  image-rendering: pixelated;
+  cursor: text;
+}
+
+.nametag-input.error {
+  color: #ff5555 !important;
+  text-shadow: 3px 3px 0px #3f1515 !important;
+}
