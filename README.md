@@ -1,1 +1,1 @@
-you can use if you want, but just credit me
+if you want you can use it, but just credit me or this repo. 
