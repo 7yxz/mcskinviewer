@@ -114,10 +114,16 @@ body {
   background-repeat: no-repeat;
   background-position: right center;
   image-rendering: pixelated;
-  transform: translateX(calc(100% + 24px));
-  transition: transform 0.35s ease-out;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(120%);
+  transition: transform 0.35s ease-out, opacity 0.2s;
 }
 
 .advancement-toast.show {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
   transform: translateX(0);
 }
