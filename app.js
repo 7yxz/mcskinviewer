@@ -3,6 +3,35 @@ const nametagWrapper = document.getElementById("nametag-wrapper");
 const nametagPlate = document.getElementById("nametag-plate");
 const nametagInput = document.getElementById("nametag-input");
 const nametagSizer = document.getElementById("nametag-sizer");
+const toast = document.getElementById("advancement-toast");
+
+const challengeSound = new Audio("advancment.mp3");
+challengeSound.volume = 0.5;
+
+let hasTriggered = false;
+
+function triggerAdvancement() {
+  if (hasTriggered) return;
+  hasTriggered = true;
+
+  toast.classList.add("show");
+  challengeSound.play().catch(() => {});
+}
+
+setTimeout(() => {
+  challengeSound.play().then(() => {
+    toast.classList.add("show");
+    hasTriggered = true;
+  }).catch(() => {
+    const handleFirstInteraction = () => {
+      triggerAdvancement();
+      window.removeEventListener("pointerdown", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+    };
+    window.addEventListener("pointerdown", handleFirstInteraction);
+    window.addEventListener("keydown", handleFirstInteraction);
+  });
+}, 800);
 
 const skinViewer = new skinview3d.SkinViewer({
   canvas: canvas,
