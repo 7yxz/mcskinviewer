@@ -102,8 +102,8 @@ body {
 
 .advancement-toast {
   position: fixed;
-  top: 12px;
-  right: 12px;
+  top: 16px;
+  right: 16px;
   z-index: 99999;
   width: 320px;
   height: 64px;
@@ -112,12 +112,12 @@ body {
   background-image: url('advancement.png');
   background-size: contain;
   background-repeat: no-repeat;
-  background-position: center;
+  background-position: right center;
   image-rendering: pixelated;
-  transform: translateY(-160%);
+  transform: translateX(calc(100% + 24px));
   transition: transform 0.35s ease-out;
 }
 
 .advancement-toast.show {
-  transform: translateY(0);
+  transform: translateX(0);
 }
