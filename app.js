@@ -58,7 +58,7 @@ toast.addEventListener("click", (e) => {
   e.preventDefault();
   challengeAudio.currentTime = 0;
   challengeAudio.play().catch(() => {});
-  window.open("https://github.com/7yxz/mcskinviewer", "_blank");
+  window.open("https://github.com/7yxz/mcuserviewer", "_blank");
 });
 
 const skinViewer = new skinview3d.SkinViewer({
