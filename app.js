@@ -5,37 +5,47 @@ const nametagInput = document.getElementById("nametag-input");
 const nametagSizer = document.getElementById("nametag-sizer");
 const toast = document.getElementById("advancement-toast");
 
-const challengeSound = new Audio("advancment.mp3");
-challengeSound.volume = 0.5;
-challengeSound.onerror = () => {
-  challengeSound.src = "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.19/assets/minecraft/sounds/ui/toast/challenge_complete.ogg";
-  challengeSound.load();
+const soundSources = [
+  "advancment.mp3",
+  "advancement.mp3",
+  "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.19/assets/minecraft/sounds/ui/toast/challenge_complete.ogg"
+];
+
+let challengeAudio = new Audio(soundSources[0]);
+challengeAudio.volume = 0.5;
+
+let srcIndex = 0;
+challengeAudio.onerror = () => {
+  srcIndex++;
+  if (srcIndex < soundSources.length) {
+    challengeAudio.src = soundSources[srcIndex];
+    challengeAudio.load();
+  }
 };
+
+function playChallengeSound() {
+  challengeAudio.currentTime = 0;
+  return challengeAudio.play();
+}
 
 toast.addEventListener("click", (e) => {
   e.preventDefault();
-  challengeSound.currentTime = 0;
-  challengeSound.play().catch(() => {});
+  playChallengeSound().catch(() => {});
   window.open("https://github.com/7yxz/mcskinviewer", "_blank");
 });
 
-function playSound() {
-  challengeSound.currentTime = 0;
-  return challengeSound.play();
-}
-
 setTimeout(() => {
   toast.classList.add("show");
-  playSound().catch(() => {
-    const unlockAudio = () => {
-      playSound().catch(() => {});
-      window.removeEventListener("pointerdown", unlockAudio);
-      window.removeEventListener("keydown", unlockAudio);
+  playChallengeSound().catch(() => {
+    const unlock = () => {
+      playChallengeSound().catch(() => {});
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
     };
-    window.addEventListener("pointerdown", unlockAudio);
-    window.addEventListener("keydown", unlockAudio);
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
   });
-}, 400);
+}, 500);
 
 const skinViewer = new skinview3d.SkinViewer({
   canvas: canvas,
