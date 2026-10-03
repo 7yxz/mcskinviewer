@@ -5,47 +5,33 @@ const nametagInput = document.getElementById("nametag-input");
 const nametagSizer = document.getElementById("nametag-sizer");
 const toast = document.getElementById("advancement-toast");
 
-const soundSources = [
-  "advancment.mp3",
-  "advancement.mp3",
-  "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.19/assets/minecraft/sounds/ui/toast/challenge_complete.ogg"
-];
-
-let challengeAudio = new Audio(soundSources[0]);
-challengeAudio.volume = 0.5;
-
-let srcIndex = 0;
-challengeAudio.onerror = () => {
-  srcIndex++;
-  if (srcIndex < soundSources.length) {
-    challengeAudio.src = soundSources[srcIndex];
-    challengeAudio.load();
-  }
-};
-
-function playChallengeSound() {
-  challengeAudio.currentTime = 0;
-  return challengeAudio.play();
-}
+const challengeAudio = new Audio("advancment.mp3");
+challengeAudio.volume = 0.6;
+challengeAudio.preload = "auto";
 
 toast.addEventListener("click", (e) => {
   e.preventDefault();
-  playChallengeSound().catch(() => {});
+  challengeAudio.currentTime = 0;
+  challengeAudio.play().catch(() => {});
   window.open("https://github.com/7yxz/mcskinviewer", "_blank");
 });
 
-setTimeout(() => {
+function triggerAdvancement() {
   toast.classList.add("show");
-  playChallengeSound().catch(() => {
+  challengeAudio.currentTime = 0;
+  challengeAudio.play().catch(() => {
     const unlock = () => {
-      playChallengeSound().catch(() => {});
+      challengeAudio.currentTime = 0;
+      challengeAudio.play().catch(() => {});
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
     };
     window.addEventListener("pointerdown", unlock);
     window.addEventListener("keydown", unlock);
   });
-}, 500);
+}
+
+setTimeout(triggerAdvancement, 300);
 
 const skinViewer = new skinview3d.SkinViewer({
   canvas: canvas,
