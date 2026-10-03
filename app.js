@@ -17,21 +17,68 @@ toast.addEventListener("click", (e) => {
 });
 
 function triggerAdvancement() {
+const canvas = document.getElementById("skin_container");
+const nametagWrapper = document.getElementById("nametag-wrapper");
+const nametagPlate = document.getElementById("nametag-plate");
+const nametagInput = document.getElementById("nametag-input");
+const nametagSizer = document.getElementById("nametag-sizer");
+const toast = document.getElementById("advancement-toast");
+
+const audioSources = [
+  "advancment.mp3",
+  "advancement.mp3",
+  "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.19/assets/minecraft/sounds/ui/toast/challenge_complete.ogg"
+];
+
+let sourceIndex = 0;
+const challengeAudio = new Audio(audioSources[0]);
+challengeAudio.volume = 0.7;
+challengeAudio.preload = "auto";
+
+challengeAudio.addEventListener("error", () => {
+  sourceIndex++;
+  if (sourceIndex < audioSources.length) {
+    challengeAudio.src = audioSources[sourceIndex];
+    challengeAudio.load();
+  }
+});
+
+let audioUnlocked = false;
+function unlockAudio() {
+  if (audioUnlocked) return;
+  challengeAudio.play().then(() => {
+    challengeAudio.pause();
+    challengeAudio.currentTime = 0;
+    audioUnlocked = true;
+  }).catch(() => {});
+
+  window.removeEventListener("pointerdown", unlockAudio);
+  window.removeEventListener("keydown", unlockAudio);
+}
+window.addEventListener("pointerdown", unlockAudio);
+window.addEventListener("keydown", unlockAudio);
+
+function triggerAdvancement() {
   toast.classList.add("show");
   challengeAudio.currentTime = 0;
   challengeAudio.play().catch(() => {
-    const unlock = () => {
+    const playOnTouch = () => {
       challengeAudio.currentTime = 0;
       challengeAudio.play().catch(() => {});
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("pointerdown", playOnTouch);
     };
-    window.addEventListener("pointerdown", unlock);
-    window.addEventListener("keydown", unlock);
+    window.addEventListener("pointerdown", playOnTouch);
   });
 }
 
-setTimeout(triggerAdvancement, 300);
+setTimeout(triggerAdvancement, 10000);
+
+toast.addEventListener("click", (e) => {
+  e.preventDefault();
+  challengeAudio.currentTime = 0;
+  challengeAudio.play().catch(() => {});
+  window.open("https://github.com/7yxz/mcskinviewer", "_blank");
+});
 
 const skinViewer = new skinview3d.SkinViewer({
   canvas: canvas,
