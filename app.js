@@ -5,33 +5,40 @@ const nametagInput = document.getElementById("nametag-input");
 const nametagSizer = document.getElementById("nametag-sizer");
 const toast = document.getElementById("advancement-toast");
 
+toast.addEventListener("click", (e) => {
+  e.preventDefault();
+  window.open("https://github.com/7yxz/mcskinviewer", "_blank");
+});
+
 const challengeSound = new Audio("advancment.mp3");
 challengeSound.volume = 0.5;
 
-let hasTriggered = false;
+let advancementPlayed = false;
 
-function triggerAdvancement() {
-  if (hasTriggered) return;
-  hasTriggered = true;
+function showAdvancement() {
+  if (advancementPlayed) return;
+  advancementPlayed = true;
 
   toast.classList.add("show");
+  challengeSound.currentTime = 0;
   challengeSound.play().catch(() => {});
 }
 
 setTimeout(() => {
   challengeSound.play().then(() => {
     toast.classList.add("show");
-    hasTriggered = true;
+    advancementPlayed = true;
   }).catch(() => {
-    const handleFirstInteraction = () => {
-      triggerAdvancement();
-      window.removeEventListener("pointerdown", handleFirstInteraction);
-      window.removeEventListener("keydown", handleFirstInteraction);
+    const handleFirstUserAction = () => {
+      showAdvancement();
+      window.removeEventListener("pointerdown", handleFirstUserAction);
+      window.removeEventListener("keydown", handleFirstUserAction);
     };
-    window.addEventListener("pointerdown", handleFirstInteraction);
-    window.addEventListener("keydown", handleFirstInteraction);
+    window.addEventListener("pointerdown", handleFirstUserAction);
+    window.addEventListener("keydown", handleFirstUserAction);
   });
-}, 800);
+}, 500);
+
 
 const skinViewer = new skinview3d.SkinViewer({
   canvas: canvas,
@@ -54,71 +61,44 @@ function syncNametagSize() {
 }
 syncNametagSize();
 
-async function getNameMCCape(username) {
-  try {
-    const url = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://namemc.com/profile/${username}`)}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const html = data.contents;
-
-    const capeMatch = html.match(/href="\/cape\/([a-f0-9]+)"/i) || 
-                      html.match(/data-cape="([a-f0-9]+)"/i);
-
-    if (capeMatch && capeMatch[1]) {
-      return `https://textures.minecraft.net/texture/${capeMatch[1]}`;
-    }
-  } catch (e) {}
-  return null;
-}
+const profileCache = new Map();
 
 async function loadPlayer(username) {
   if (!username) return;
 
+  const cleanName = username.trim();
   nametagInput.classList.remove("error");
   nametagInput.style.opacity = "0.6";
+
+
+  if (profileCache.has(cleanName.toLowerCase())) {
+    const cached = profileCache.get(cleanName.toLowerCase());
+    await applyPlayerData(cached.skinUrl, cached.isSlim, cached.capeUrl, cleanName);
+    nametagInput.style.opacity = "1";
+    return;
+  }
 
   let skinUrl = null;
   let capeUrl = null;
   let isSlim = false;
   let success = false;
 
-  const [nameMCCape, profileData] = await Promise.all([
-    getNameMCCape(username),
-    (async () => {
-      try {
-        const uuidRes = await fetch(`https://api.minetools.eu/uuid/${encodeURIComponent(username)}`);
-        const uuidData = await uuidRes.json();
-        if (uuidData.id) {
-          const profileRes = await fetch(`https://api.minetools.eu/profile/${uuidData.id}`);
-          const profile = await profileRes.json();
-          if (profile.decoded && profile.decoded.textures) {
-            return {
-              skinUrl: profile.decoded.textures.SKIN ? profile.decoded.textures.SKIN.url : null,
-              isSlim: profile.decoded.textures.SKIN && profile.decoded.textures.SKIN.metadata ? profile.decoded.textures.SKIN.metadata.model === "slim" : false,
-              capeUrl: profile.decoded.textures.CAPE ? profile.decoded.textures.CAPE.url : null
-            };
-          }
-        }
-      } catch (e) {}
-      return null;
-    })()
-  ]);
+  try {
+    const res = await fetch(`https://api.ashcon.app/mojang/v2/user/${encodeURIComponent(cleanName)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.textures && data.textures.skin) {
+        skinUrl = data.textures.skin.url;
+        isSlim = data.textures.skin.slim || false;
+        capeUrl = data.textures.cape ? data.textures.cape.url : null;
+        success = true;
+      }
+    }
+  } catch (e) {}
 
-  if (profileData && profileData.skinUrl) {
-    skinUrl = profileData.skinUrl;
-    isSlim = profileData.isSlim;
-    capeUrl = profileData.capeUrl;
-    success = true;
-  }
-
-  if (nameMCCape) {
-    capeUrl = nameMCCape;
-  }
-
-  if (!skinUrl) {
+  if (!success) {
     try {
-      const res = await fetch(`https://playerdb.co/api/player/minecraft/${encodeURIComponent(username)}`);
+      const res = await fetch(`https://playerdb.co/api/player/minecraft/${encodeURIComponent(cleanName)}`);
       const json = await res.json();
       if (json.success && json.data.player) {
         const props = json.data.player.properties;
@@ -127,7 +107,7 @@ async function loadPlayer(username) {
           const decoded = JSON.parse(atob(texProp.value));
           skinUrl = decoded.textures?.SKIN?.url || null;
           isSlim = decoded.textures?.SKIN?.metadata?.model === "slim";
-          if (!capeUrl) capeUrl = decoded.textures?.CAPE?.url || null;
+          capeUrl = decoded.textures?.CAPE?.url || null;
           success = true;
         }
       }
@@ -135,31 +115,37 @@ async function loadPlayer(username) {
   }
 
   if (success && skinUrl) {
-    await skinViewer.loadSkin(skinUrl, isSlim ? "slim" : "default");
-
-    if (capeUrl) {
-      await skinViewer.loadCape(capeUrl);
-      skinViewer.playerObject.backEquipment = "cape";
-    } else {
-      const ofCape = `https://optifine.net/capes/${encodeURIComponent(username)}.png`;
-      const testImg = new Image();
-      testImg.crossOrigin = "anonymous";
-      testImg.src = ofCape;
-
-      testImg.onload = async () => {
-        await skinViewer.loadCape(ofCape);
-        skinViewer.playerObject.backEquipment = "cape";
-      };
-
-      testImg.onerror = () => {
-        skinViewer.loadCape(null);
-      };
-    }
+    // Save to cache
+    profileCache.set(cleanName.toLowerCase(), { skinUrl, isSlim, capeUrl });
+    await applyPlayerData(skinUrl, isSlim, capeUrl, cleanName);
     nametagInput.style.opacity = "1";
   } else {
     nametagInput.classList.add("error");
     nametagInput.style.opacity = "1";
     setTimeout(() => nametagInput.classList.remove("error"), 1500);
+  }
+}
+
+async function applyPlayerData(skinUrl, isSlim, capeUrl, username) {
+  await skinViewer.loadSkin(skinUrl, isSlim ? "slim" : "default");
+
+  if (capeUrl) {
+    await skinViewer.loadCape(capeUrl);
+    skinViewer.playerObject.backEquipment = "cape";
+  } else {
+    const ofCape = `https://optifine.net/capes/${encodeURIComponent(username)}.png`;
+    const testImg = new Image();
+    testImg.crossOrigin = "anonymous";
+    testImg.src = ofCape;
+
+    testImg.onload = async () => {
+      await skinViewer.loadCape(ofCape);
+      skinViewer.playerObject.backEquipment = "cape";
+    };
+
+    testImg.onerror = () => {
+      skinViewer.loadCape(null);
+    };
   }
 }
 
