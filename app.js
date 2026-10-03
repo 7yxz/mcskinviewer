@@ -5,40 +5,28 @@ const nametagInput = document.getElementById("nametag-input");
 const nametagSizer = document.getElementById("nametag-sizer");
 const toast = document.getElementById("advancement-toast");
 
-toast.addEventListener("click", (e) => {
-  e.preventDefault();
-  window.open("https://github.com/7yxz/mcskinviewer", "_blank");
-});
-
 const challengeSound = new Audio("advancment.mp3");
 challengeSound.volume = 0.5;
 
-let advancementPlayed = false;
-
-function showAdvancement() {
-  if (advancementPlayed) return;
-  advancementPlayed = true;
-
-  toast.classList.add("show");
+toast.addEventListener("click", (e) => {
+  e.preventDefault();
   challengeSound.currentTime = 0;
   challengeSound.play().catch(() => {});
-}
+  window.open("https://github.com/7yxz/mcskinviewer", "_blank");
+});
 
 setTimeout(() => {
-  challengeSound.play().then(() => {
-    toast.classList.add("show");
-    advancementPlayed = true;
-  }).catch(() => {
-    const handleFirstUserAction = () => {
-      showAdvancement();
-      window.removeEventListener("pointerdown", handleFirstUserAction);
-      window.removeEventListener("keydown", handleFirstUserAction);
+  toast.classList.add("show");
+  challengeSound.play().catch(() => {
+    const playOnUserAction = () => {
+      challengeSound.play().catch(() => {});
+      window.removeEventListener("pointerdown", playOnUserAction);
+      window.removeEventListener("keydown", playOnUserAction);
     };
-    window.addEventListener("pointerdown", handleFirstUserAction);
-    window.addEventListener("keydown", handleFirstUserAction);
+    window.addEventListener("pointerdown", playOnUserAction);
+    window.addEventListener("keydown", playOnUserAction);
   });
-}, 500);
-
+}, 600);
 
 const skinViewer = new skinview3d.SkinViewer({
   canvas: canvas,
@@ -61,7 +49,53 @@ function syncNametagSize() {
 }
 syncNametagSize();
 
-const profileCache = new Map();
+const cache = new Map();
+
+async function fetchFastProfile(username) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2500);
+
+  const crafthead = fetch(`https://crafthead.net/profile/${encodeURIComponent(username)}`, { signal: controller.signal })
+    .then(r => r.json())
+    .then(data => {
+      if (!data || !data.properties) throw new Error();
+      const tex = data.properties.find(p => p.name === "textures");
+      if (!tex) throw new Error();
+      const dec = JSON.parse(atob(tex.value));
+      return {
+        skinUrl: dec.textures?.SKIN?.url || null,
+        isSlim: dec.textures?.SKIN?.metadata?.model === "slim",
+        capeUrl: dec.textures?.CAPE?.url || null
+      };
+    });
+
+  const playerdb = fetch(`https://playerdb.co/api/player/minecraft/${encodeURIComponent(username)}`, { signal: controller.signal })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success || !data.data?.player) throw new Error();
+      const tex = data.data.player.properties?.find(p => p.name === "textures");
+      if (!tex) throw new Error();
+      const dec = JSON.parse(atob(tex.value));
+      return {
+        skinUrl: dec.textures?.SKIN?.url || null,
+        isSlim: dec.textures?.SKIN?.metadata?.model === "slim",
+        capeUrl: dec.textures?.CAPE?.url || null
+      };
+    });
+
+  try {
+    const result = await Promise.any([crafthead, playerdb]);
+    clearTimeout(timeout);
+    return result;
+  } catch (err) {
+    clearTimeout(timeout);
+    return {
+      skinUrl: `https://crafthead.net/skin/${encodeURIComponent(username)}`,
+      isSlim: false,
+      capeUrl: null
+    };
+  }
+}
 
 async function loadPlayer(username) {
   if (!username) return;
@@ -70,54 +104,18 @@ async function loadPlayer(username) {
   nametagInput.classList.remove("error");
   nametagInput.style.opacity = "0.6";
 
-
-  if (profileCache.has(cleanName.toLowerCase())) {
-    const cached = profileCache.get(cleanName.toLowerCase());
+  if (cache.has(cleanName.toLowerCase())) {
+    const cached = cache.get(cleanName.toLowerCase());
     await applyPlayerData(cached.skinUrl, cached.isSlim, cached.capeUrl, cleanName);
     nametagInput.style.opacity = "1";
     return;
   }
 
-  let skinUrl = null;
-  let capeUrl = null;
-  let isSlim = false;
-  let success = false;
+  const profile = await fetchFastProfile(cleanName);
 
-  try {
-    const res = await fetch(`https://api.ashcon.app/mojang/v2/user/${encodeURIComponent(cleanName)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.textures && data.textures.skin) {
-        skinUrl = data.textures.skin.url;
-        isSlim = data.textures.skin.slim || false;
-        capeUrl = data.textures.cape ? data.textures.cape.url : null;
-        success = true;
-      }
-    }
-  } catch (e) {}
-
-  if (!success) {
-    try {
-      const res = await fetch(`https://playerdb.co/api/player/minecraft/${encodeURIComponent(cleanName)}`);
-      const json = await res.json();
-      if (json.success && json.data.player) {
-        const props = json.data.player.properties;
-        const texProp = props ? props.find(p => p.name === "textures") : null;
-        if (texProp && texProp.value) {
-          const decoded = JSON.parse(atob(texProp.value));
-          skinUrl = decoded.textures?.SKIN?.url || null;
-          isSlim = decoded.textures?.SKIN?.metadata?.model === "slim";
-          capeUrl = decoded.textures?.CAPE?.url || null;
-          success = true;
-        }
-      }
-    } catch (e) {}
-  }
-
-  if (success && skinUrl) {
-    // Save to cache
-    profileCache.set(cleanName.toLowerCase(), { skinUrl, isSlim, capeUrl });
-    await applyPlayerData(skinUrl, isSlim, capeUrl, cleanName);
+  if (profile && profile.skinUrl) {
+    cache.set(cleanName.toLowerCase(), profile);
+    await applyPlayerData(profile.skinUrl, profile.isSlim, profile.capeUrl, cleanName);
     nametagInput.style.opacity = "1";
   } else {
     nametagInput.classList.add("error");
