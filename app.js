@@ -5,73 +5,54 @@ const nametagInput = document.getElementById("nametag-input");
 const nametagSizer = document.getElementById("nametag-sizer");
 const toast = document.getElementById("advancement-toast");
 
-const challengeAudio = new Audio("advancment.mp3");
-challengeAudio.volume = 0.6;
-challengeAudio.preload = "auto";
-
-toast.addEventListener("click", (e) => {
-  e.preventDefault();
-  challengeAudio.currentTime = 0;
-  challengeAudio.play().catch(() => {});
-  window.open("https://github.com/7yxz/mcskinviewer", "_blank");
-});
-
-function triggerAdvancement() {
-const canvas = document.getElementById("skin_container");
-const nametagWrapper = document.getElementById("nametag-wrapper");
-const nametagPlate = document.getElementById("nametag-plate");
-const nametagInput = document.getElementById("nametag-input");
-const nametagSizer = document.getElementById("nametag-sizer");
-const toast = document.getElementById("advancement-toast");
-
-const audioSources = [
+const soundSources = [
   "advancment.mp3",
   "advancement.mp3",
   "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.19/assets/minecraft/sounds/ui/toast/challenge_complete.ogg"
 ];
 
-let sourceIndex = 0;
-const challengeAudio = new Audio(audioSources[0]);
+let soundIdx = 0;
+const challengeAudio = new Audio(soundSources[0]);
 challengeAudio.volume = 0.7;
 challengeAudio.preload = "auto";
 
 challengeAudio.addEventListener("error", () => {
-  sourceIndex++;
-  if (sourceIndex < audioSources.length) {
-    challengeAudio.src = audioSources[sourceIndex];
+  soundIdx++;
+  if (soundIdx < soundSources.length) {
+    challengeAudio.src = soundSources[soundIdx];
     challengeAudio.load();
   }
 });
 
-let audioUnlocked = false;
-function unlockAudio() {
-  if (audioUnlocked) return;
+let userInteracted = false;
+function unlockAudioContext() {
+  if (userInteracted) return;
   challengeAudio.play().then(() => {
     challengeAudio.pause();
     challengeAudio.currentTime = 0;
-    audioUnlocked = true;
+    userInteracted = true;
   }).catch(() => {});
 
-  window.removeEventListener("pointerdown", unlockAudio);
-  window.removeEventListener("keydown", unlockAudio);
+  window.removeEventListener("pointerdown", unlockAudioContext);
+  window.removeEventListener("keydown", unlockAudioContext);
 }
-window.addEventListener("pointerdown", unlockAudio);
-window.addEventListener("keydown", unlockAudio);
+window.addEventListener("pointerdown", unlockAudioContext);
+window.addEventListener("keydown", unlockAudioContext);
 
-function triggerAdvancement() {
+function launchAdvancement() {
   toast.classList.add("show");
   challengeAudio.currentTime = 0;
   challengeAudio.play().catch(() => {
-    const playOnTouch = () => {
+    const playOnClick = () => {
       challengeAudio.currentTime = 0;
       challengeAudio.play().catch(() => {});
-      window.removeEventListener("pointerdown", playOnTouch);
+      window.removeEventListener("pointerdown", playOnClick);
     };
-    window.addEventListener("pointerdown", playOnTouch);
+    window.addEventListener("pointerdown", playOnClick);
   });
 }
 
-setTimeout(triggerAdvancement, 10000);
+setTimeout(launchAdvancement, 10000);
 
 toast.addEventListener("click", (e) => {
   e.preventDefault();
