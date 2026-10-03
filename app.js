@@ -25,6 +25,24 @@ function syncNametagSize() {
 }
 syncNametagSize();
 
+async function getNameMCCape(username) {
+  try {
+    const url = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://namemc.com/profile/${username}`)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const html = data.contents;
+
+    const capeMatch = html.match(/href="\/cape\/([a-f0-9]+)"/i) || 
+                      html.match(/data-cape="([a-f0-9]+)"/i);
+
+    if (capeMatch && capeMatch[1]) {
+      return `https://textures.minecraft.net/texture/${capeMatch[1]}`;
+    }
+  } catch (e) {}
+  return null;
+}
+
 async function loadPlayer(username) {
   if (!username) return;
 
@@ -36,33 +54,53 @@ async function loadPlayer(username) {
   let isSlim = false;
   let success = false;
 
-  try {
-    const res = await fetch(`https://playerdb.co/api/player/minecraft/${encodeURIComponent(username)}`);
-    const json = await res.json();
+  const [nameMCCape, profileData] = await Promise.all([
+    getNameMCCape(username),
+    (async () => {
+      try {
+        const uuidRes = await fetch(`https://api.minetools.eu/uuid/${encodeURIComponent(username)}`);
+        const uuidData = await uuidRes.json();
+        if (uuidData.id) {
+          const profileRes = await fetch(`https://api.minetools.eu/profile/${uuidData.id}`);
+          const profile = await profileRes.json();
+          if (profile.decoded && profile.decoded.textures) {
+            return {
+              skinUrl: profile.decoded.textures.SKIN ? profile.decoded.textures.SKIN.url : null,
+              isSlim: profile.decoded.textures.SKIN && profile.decoded.textures.SKIN.metadata ? profile.decoded.textures.SKIN.metadata.model === "slim" : false,
+              capeUrl: profile.decoded.textures.CAPE ? profile.decoded.textures.CAPE.url : null
+            };
+          }
+        }
+      } catch (e) {}
+      return null;
+    })()
+  ]);
 
-    if (json.success && json.data.player) {
-      const props = json.data.player.properties;
-      const texProp = props ? props.find(p => p.name === "textures") : null;
+  if (profileData && profileData.skinUrl) {
+    skinUrl = profileData.skinUrl;
+    isSlim = profileData.isSlim;
+    capeUrl = profileData.capeUrl;
+    success = true;
+  }
 
-      if (texProp && texProp.value) {
-        const decoded = JSON.parse(atob(texProp.value));
-        skinUrl = decoded.textures?.SKIN?.url || null;
-        isSlim = decoded.textures?.SKIN?.metadata?.model === "slim";
-        capeUrl = decoded.textures?.CAPE?.url || null;
-        success = true;
-      }
-    }
-  } catch (e) {}
+  if (nameMCCape) {
+    capeUrl = nameMCCape;
+  }
 
   if (!skinUrl) {
     try {
-      const res = await fetch(`https://api.ashcon.app/mojang/v2/user/${encodeURIComponent(username)}`);
-      if (res.ok) {
-        const data = await res.json();
-        skinUrl = data.textures?.skin?.url || null;
-        isSlim = data.textures?.skin?.slim || false;
-        capeUrl = data.textures?.cape?.url || null;
-        success = true;
+      const res = await fetch(`https://playerdb.co/api/player/minecraft/${encodeURIComponent(username)}`);
+      const json = await res.json();
+      if (json.success && json.data.player) {
+        const props = json.data.player.properties;
+        const texProp = props ? props.find(p => p.name === "textures") : null;
+        if (texProp && texProp.value) {
+          const decoded = JSON.parse(atob(texProp.value));
+          skinUrl = decoded.textures?.SKIN?.url || null;
+          isSlim = decoded.textures?.SKIN?.metadata?.model === "slim";
+          if (!capeUrl) capeUrl = decoded.textures?.CAPE?.url || null;
+          success = true;
+        }
       }
     } catch (e) {}
   }
