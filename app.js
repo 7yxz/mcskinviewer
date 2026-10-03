@@ -7,6 +7,10 @@ const toast = document.getElementById("advancement-toast");
 
 const challengeSound = new Audio("advancment.mp3");
 challengeSound.volume = 0.5;
+challengeSound.onerror = () => {
+  challengeSound.src = "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.19/assets/minecraft/sounds/ui/toast/challenge_complete.ogg";
+  challengeSound.load();
+};
 
 toast.addEventListener("click", (e) => {
   e.preventDefault();
@@ -15,18 +19,23 @@ toast.addEventListener("click", (e) => {
   window.open("https://github.com/7yxz/mcskinviewer", "_blank");
 });
 
+function playSound() {
+  challengeSound.currentTime = 0;
+  return challengeSound.play();
+}
+
 setTimeout(() => {
   toast.classList.add("show");
-  challengeSound.play().catch(() => {
-    const playOnUserAction = () => {
-      challengeSound.play().catch(() => {});
-      window.removeEventListener("pointerdown", playOnUserAction);
-      window.removeEventListener("keydown", playOnUserAction);
+  playSound().catch(() => {
+    const unlockAudio = () => {
+      playSound().catch(() => {});
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
     };
-    window.addEventListener("pointerdown", playOnUserAction);
-    window.addEventListener("keydown", playOnUserAction);
+    window.addEventListener("pointerdown", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
   });
-}, 600);
+}, 400);
 
 const skinViewer = new skinview3d.SkinViewer({
   canvas: canvas,
@@ -53,7 +62,7 @@ const cache = new Map();
 
 async function fetchFastProfile(username) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 2500);
+  const timeout = setTimeout(() => controller.abort(), 2000);
 
   const crafthead = fetch(`https://crafthead.net/profile/${encodeURIComponent(username)}`, { signal: controller.signal })
     .then(r => r.json())
