@@ -1,10 +1,12 @@
 {
-  "version": "6.7",
+  "version": "1.0",
   "type": "link",
-  "title": "Minecraft USer Viewer",
+  "title": "Minecraft Uer Viewer",
   "author_name": "7yxz",
   "author_url": "https://github.com/7yxz/mcuserviewer",
   "provider_name": "mcuserviewer",
   "provider_url": "https://7yxz.github.io/mcuserviewer/",
-  "thumbnail_url": "https://7yxz.github.io/mcuserviewer/thumb.png?v=1"
+  "thumbnail_url": "https://7yxz.github.io/mcuserviewer/thumb.png",
+  "thumbnail_width": 1920,
+  "thumbnail_height": 1080
 }
