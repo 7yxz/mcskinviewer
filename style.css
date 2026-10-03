@@ -99,12 +99,11 @@ body {
   color: #ff5555 !important;
   text-shadow: 3px 3px 0px #3f1515 !important;
 }
-
 .advancement-toast {
-  position: absolute;
+  position: fixed;
   top: 16px;
   right: 16px;
-  z-index: 100;
+  z-index: 9999;
   width: 240px;
   height: 64px;
   text-decoration: none;
@@ -113,8 +112,9 @@ body {
   background-size: 100% 100%;
   background-repeat: no-repeat;
   image-rendering: pixelated;
-  transform: translateX(140%);
-  transition: transform 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28), filter 0.15s;
+
+  transform: translateX(calc(100% + 32px));
+  transition: transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.25), filter 0.15s;
 }
 
 .advancement-toast.show {
